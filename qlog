@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+metric="${1:-}"
+value="${2:-}"
+notes="${3:-}"
+
+if [[ -z "$metric" || -z "$value" ]]; then
+  echo "Usage: qlog <metric> <value> [notes]" >&2
+  exit 1
+fi
+
+case "$metric" in
+  protein) category="nutrition"; unit="g"; agent="wellness-coach" ;;
+  water) category="nutrition"; unit="glasses"; agent="wellness-coach" ;;
+  workout) category="fitness"; unit="minutes"; agent="wellness-coach" ;;
+  meditate) category="spiritual"; unit="minutes"; agent="soul-guide" ;;
+  grateful) category="spiritual"; unit="entries"; agent="soul-guide" ;;
+  expense) category="finance"; unit="usd"; agent="money-mentor" ;;
+  income) category="finance"; unit="usd"; agent="money-mentor" ;;
+  learn) category="career"; unit="minutes"; agent="career-catalyst" ;;
+  network) category="career"; unit="people"; agent="career-catalyst" ;;
+  partner) category="relationships"; unit="minutes"; agent="heart-connector" ;;
+  friend) category="relationships"; unit="people"; agent="heart-connector" ;;
+  *)
+    echo "Unknown metric: $metric" >&2
+    exit 1
+    ;;
+esac
+
+LC_AGENT="$agent" lc log "$category" "$metric" "$value" "$unit" "$notes"
