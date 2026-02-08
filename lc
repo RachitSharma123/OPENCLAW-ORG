@@ -1,0 +1,285 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DB="${LC_DB:-$HOME/.life-control/life.db}"
+AGENT="${LC_AGENT:-$USER}"
+
+require_db() {
+  if [[ ! -f "$DB" ]]; then
+    echo "Database not found. Run: lc init" >&2
+    exit 1
+  fi
+}
+
+sql() {
+  sqlite3 -batch -noheader "$DB" "$1"
+}
+
+init_db() {
+  mkdir -p "$(dirname "$DB")"
+  sqlite3 "$DB" <<'SQL'
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
+
+CREATE TABLE IF NOT EXISTS agents (
+  name TEXT PRIMARY KEY,
+  role TEXT,
+  focus TEXT,
+  telegram_token TEXT,
+  status TEXT DEFAULT 'idle',
+  last_checkin TEXT
+);
+
+CREATE TABLE IF NOT EXISTS goals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  category TEXT DEFAULT 'general',
+  status TEXT DEFAULT 'pending',
+  priority INTEGER DEFAULT 3,
+  agent TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  started_at TEXT,
+  completed_at TEXT,
+  due_date TEXT,
+  notes TEXT,
+  FOREIGN KEY(agent) REFERENCES agents(name)
+);
+
+CREATE TABLE IF NOT EXISTS metrics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent TEXT,
+  category TEXT,
+  metric_name TEXT,
+  value REAL,
+  unit TEXT,
+  notes TEXT,
+  logged_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(agent) REFERENCES agents(name)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_agent TEXT,
+  to_agent TEXT,
+  subject TEXT,
+  body TEXT,
+  task_id INTEGER,
+  status TEXT DEFAULT 'unread',
+  sent_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS activity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent TEXT,
+  action TEXT,
+  target TEXT,
+  details TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent TEXT,
+  telegram_token TEXT,
+  message TEXT,
+  priority TEXT DEFAULT 'normal',
+  sent INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  sent_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS routines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  schedule TEXT,
+  command TEXT,
+  description TEXT,
+  active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+SQL
+  echo "✨ Life Control initialized at $DB"
+}
+
+register_agent() {
+  local name="$1"
+  local role="${2:-}" 
+  local focus="${3:-}"
+  local token="${4:-}"
+  require_db
+  sql "INSERT INTO agents(name, role, focus, telegram_token, status, last_checkin) VALUES('$name', '$role', '$focus', '$token', 'idle', datetime('now')) ON CONFLICT(name) DO UPDATE SET role=excluded.role, focus=excluded.focus, telegram_token=excluded.telegram_token;"
+  sql "INSERT INTO activity(agent, action, target, details) VALUES('$name', 'register', 'agent', 'registered');"
+  echo "🤖 Registered $name"
+}
+
+add_goal() {
+  local title="$1"
+  local category="${2:-general}"
+  local agent="${3:-$AGENT}"
+  local priority="${4:-3}"
+  local due_date="${5:-}"
+  require_db
+  sql "INSERT INTO goals(title, category, agent, priority, due_date) VALUES('$title', '$category', '$agent', $priority, NULLIF('$due_date',''));"
+  sql "INSERT INTO activity(agent, action, target, details) VALUES('$agent', 'add', 'goal', '$title');"
+  echo "✨ Added: $title"
+}
+
+list_goals() {
+  local status="${1:-}"
+  local category="${2:-}"
+  require_db
+  local where="1=1"
+  if [[ -n "$status" ]]; then
+    where="$where AND status='$status'"
+  fi
+  if [[ -n "$category" ]]; then
+    where="$where AND category='$category'"
+  fi
+  sqlite3 -header -column "$DB" "SELECT id, status, priority, category, title, agent, due_date FROM goals WHERE $where ORDER BY priority ASC, id DESC;"
+}
+
+start_goal() {
+  local id="$1"
+  require_db
+  sql "UPDATE goals SET status='in_progress', started_at=datetime('now') WHERE id=$id;"
+  sql "INSERT INTO activity(agent, action, target, details) VALUES('$AGENT', 'start', 'goal', 'goal #$id');"
+  echo "🚀 Started goal #$id"
+}
+
+done_goal() {
+  local id="$1"
+  local msg="${2:-}"
+  require_db
+  sql "UPDATE goals SET status='completed', completed_at=datetime('now') WHERE id=$id;"
+  sql "INSERT INTO activity(agent, action, target, details) VALUES('$AGENT', 'done', 'goal', 'goal #$id');"
+  if [[ -n "$msg" ]]; then
+    sql "INSERT INTO messages(from_agent, to_agent, subject, body, task_id) VALUES('$AGENT', '$AGENT', 'completion', '$msg', $id);"
+  fi
+  echo "🎉 Completed goal #$id"
+}
+
+send_msg() {
+  local to_agent="$1"
+  local body="$2"
+  local subject="${3:-}"
+  local task_id="${4:-}"
+  require_db
+  sql "INSERT INTO messages(from_agent, to_agent, subject, body, task_id) VALUES('$AGENT', '$to_agent', '$subject', '$body', NULLIF('$task_id',''));"
+  sql "INSERT INTO activity(agent, action, target, details) VALUES('$AGENT', 'msg', 'agent', 'to $to_agent');"
+  echo "💌 Sent message to $to_agent"
+}
+
+inbox() {
+  local mode="${1:-unread}"
+  require_db
+  local where="status='unread'"
+  if [[ "$mode" == "all" ]]; then
+    where="1=1"
+  fi
+  sqlite3 -header -column "$DB" "SELECT id, from_agent, subject, body, task_id, sent_at, status FROM messages WHERE to_agent='$AGENT' AND $where ORDER BY id DESC;"
+}
+
+fleet() {
+  require_db
+  sqlite3 -header -column "$DB" "SELECT name, role, status, last_checkin FROM agents ORDER BY name;"
+}
+
+feed() {
+  local limit="${1:-20}"
+  require_db
+  sqlite3 -header -column "$DB" "SELECT created_at, agent, action, target, details FROM activity ORDER BY id DESC LIMIT $limit;"
+}
+
+log_metric() {
+  local category="$1"
+  local metric="$2"
+  local value="$3"
+  local unit="${4:-}"
+  local notes="${5:-}"
+  require_db
+  sql "INSERT INTO metrics(agent, category, metric_name, value, unit, notes) VALUES('$AGENT', '$category', '$metric', $value, '$unit', '$notes');"
+  sql "INSERT INTO activity(agent, action, target, details) VALUES('$AGENT', 'log', '$category', '$metric: $value $unit');"
+  echo "📈 Logged $metric ($value $unit)"
+}
+
+notify() {
+  local agent="$1"
+  local message="$2"
+  local priority="${3:-normal}"
+  require_db
+  local token
+  token=$(sql "SELECT telegram_token FROM agents WHERE name='$agent' LIMIT 1;")
+  sql "INSERT INTO notifications(agent, telegram_token, message, priority) VALUES('$agent', '$token', '$message', '$priority');"
+  sql "INSERT INTO activity(agent, action, target, details) VALUES('$agent', 'notify', 'telegram', '$priority');"
+  echo "📣 Queued notification for $agent"
+}
+
+checkin() {
+  local status="${1:-active}"
+  require_db
+  sql "UPDATE agents SET status='$status', last_checkin=datetime('now') WHERE name='$AGENT';"
+  sql "INSERT INTO activity(agent, action, target, details) VALUES('$AGENT', 'checkin', 'agent', '$status');"
+  echo "✅ $AGENT check-in ($status)"
+}
+
+dashboard() {
+  require_db
+  local pending
+  local completed
+  local unread
+  pending=$(sql "SELECT COUNT(*) FROM goals WHERE status='pending';")
+  completed=$(sql "SELECT COUNT(*) FROM goals WHERE status='completed' AND date(completed_at)=date('now');")
+  unread=$(sql "SELECT COUNT(*) FROM messages WHERE to_agent='$AGENT' AND status='unread';")
+  echo "╔═══════════════════════════════════════╗"
+  echo "║     💖  LIFE CONTROL DASHBOARD  💖     ║"
+  echo "╚═══════════════════════════════════════╝"
+  echo "Hello sunshine! 🌅"
+  echo ""
+  echo "📌 Pending goals: $pending"
+  echo "✅ Completed today: $completed"
+  echo "📬 Unread messages: $unread"
+  echo "🤖 Active agents: $(sql "SELECT COUNT(*) FROM agents;")"
+}
+
+usage() {
+  cat <<'USAGE'
+Life Control ✨
+
+Commands:
+  lc init
+  lc register <name> [role] [focus] [telegram_token]
+  lc add "Title" [category] [agent] [priority] [due_date]
+  lc list [status] [category]
+  lc start <id>
+  lc done <id> [message]
+  lc log <category> <metric> <value> [unit] [notes]
+  lc msg <agent> "body" [subject] [task_id]
+  lc inbox [all]
+  lc fleet
+  lc feed [limit]
+  lc notify <agent> "message" [priority]
+  lc checkin [status]
+  lc dashboard
+USAGE
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  init) init_db ;;
+  register) register_agent "$@" ;;
+  add) add_goal "$@" ;;
+  list) list_goals "$@" ;;
+  start) start_goal "$@" ;;
+  done) done_goal "$@" ;;
+  log) log_metric "$@" ;;
+  msg) send_msg "$@" ;;
+  inbox) inbox "$@" ;;
+  fleet) fleet "$@" ;;
+  feed) feed "$@" ;;
+  notify) notify "$@" ;;
+  checkin) checkin "$@" ;;
+  dashboard) dashboard "$@" ;;
+  *) usage ;;
+esac

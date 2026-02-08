@@ -1,0 +1,49 @@
+# Life Control - Crontab Schedule Template 🌟
+# Add this to your crontab with: crontab -e
+# Update paths to match your installation.
+
+LC_PATH=/path/to/life-control
+ROUTINES_PATH=/path/to/life-control/routines
+
+# Morning Alignment - 7:00 AM daily
+0 7 * * * $ROUTINES_PATH/morning-alignment.sh >> /tmp/lc-morning.log 2>&1
+
+# High-Signal Intelligence - 7:30 AM Mon/Wed/Fri
+30 7 * * 1,3,5 $ROUTINES_PATH/intelligence-scan.sh >> /tmp/lc-intel.log 2>&1
+
+# Work Outcome Priming - 8:30 AM weekdays
+30 8 * * 1-5 $ROUTINES_PATH/work-priming.sh >> /tmp/lc-work-priming.log 2>&1
+
+# Body Protocol Check - 12:00 PM daily
+0 12 * * * $ROUTINES_PATH/body-protocol.sh >> /tmp/lc-body.log 2>&1
+
+# Financial Stability Pulse - 1:00 PM Mon/Thu
+0 13 * * 1,4 $ROUTINES_PATH/financial-pulse.sh >> /tmp/lc-finance.log 2>&1
+
+# Partner/Social Radar - 6:00 PM daily
+0 18 * * * $ROUTINES_PATH/social-radar.sh >> /tmp/lc-social.log 2>&1
+
+# System Shutdown & Log - 9:00 PM daily
+0 21 * * * $ROUTINES_PATH/evening-shutdown.sh >> /tmp/lc-shutdown.log 2>&1
+
+# Telegram notifications - every 15 minutes
+*/15 * * * * $LC_PATH/telegram-sender.sh >> /tmp/lc-telegram.log 2>&1
+
+# Agent heartbeats
+*/30 7-22 * * * LC_AGENT=wellness-coach $LC_PATH/lc checkin active
+0 9-17 * * 1-5 LC_AGENT=money-mentor $LC_PATH/lc checkin active
+0 8,20 * * * LC_AGENT=style-guru $LC_PATH/lc checkin active
+0 9-17/2 * * 1-5 LC_AGENT=career-catalyst $LC_PATH/lc checkin active
+0 7,14,21 * * * LC_AGENT=vision-keeper $LC_PATH/lc checkin active
+0 9,18 * * * LC_AGENT=heart-connector $LC_PATH/lc checkin active
+0 7,21 * * * LC_AGENT=soul-guide $LC_PATH/lc checkin active
+0 10 * * * LC_AGENT=creative-spark $LC_PATH/lc checkin active
+
+# Weekly review - Sunday 8:00 PM
+0 20 * * 0 $LC_PATH/lc dashboard >> /tmp/lc-weekly-review.log 2>&1
+
+# Daily database backup - 2:00 AM
+0 2 * * * cp $HOME/.life-control/life.db $HOME/.life-control/backups/life-$(date +\%Y\%m\%d).db
+
+# Weekly backup cleanup - keep last 4 weeks
+0 3 * * 0 find $HOME/.life-control/backups -name "life-*.db" -mtime +28 -delete
