@@ -4,7 +4,18 @@ set -euo pipefail
 echo "✨ Setting up your Life Control agents..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LC_BIN="${LC_BIN:-$SCRIPT_DIR/lc}"
+DEFAULT_LC_BIN="$SCRIPT_DIR/lc"
+LC_BIN="${LC_BIN:-$DEFAULT_LC_BIN}"
+
+if [[ ! -x "$LC_BIN" ]]; then
+  echo "⚠️  LC_BIN '$LC_BIN' is not executable. Falling back to '$DEFAULT_LC_BIN'." >&2
+  LC_BIN="$DEFAULT_LC_BIN"
+fi
+
+if [[ ! -x "$LC_BIN" ]]; then
+  echo "❌ Could not find an executable lc binary. Expected at '$DEFAULT_LC_BIN'." >&2
+  exit 1
+fi
 
 "$LC_BIN" init
 
