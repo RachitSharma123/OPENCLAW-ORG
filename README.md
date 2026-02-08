@@ -6,7 +6,7 @@ Your warm, high-IQ personal coordination system. Track nutrition, finance, caree
 
 ### 1) Install
 ```bash
-git clone <your-repo> life-control
+git clone https://github.com/RachitSharma123/OPENCLAW-ORG | echo "life-control"
 cd life-control
 chmod +x lc qlog setup-agents.sh telegram-sender.sh install.sh routines/*.sh
 ```
