@@ -6,27 +6,9 @@ Your warm, high-IQ personal coordination system. Track nutrition, finance, caree
 
 ### 1) Install
 ```bash
-git clone <your-repo> life-control
+git clone https://github.com/RachitSharma123/OPENCLAW-ORG | echo "life-control"
 cd life-control
 chmod +x lc qlog setup-agents.sh telegram-sender.sh install.sh routines/*.sh
-```
-
-### 1b) OpenClaw skill usage (optional)
-If you're running this through OpenClaw, point the skill runner at `skills/life-control` and run:
-```bash
-skills/life-control/scripts/bootstrap.sh
-```
-Set these environment variables so your agent personas can deliver Telegram messages via their own bots:
-```bash
-export TELEGRAM_CHAT_ID="YOUR_CHAT_ID"
-export WELLNESS_BOT_TOKEN="YOUR_WELLNESS_BOT_TOKEN"
-export FINANCE_BOT_TOKEN="YOUR_FINANCE_BOT_TOKEN"
-export FASHION_BOT_TOKEN="YOUR_FASHION_BOT_TOKEN"
-export CAREER_BOT_TOKEN="YOUR_CAREER_BOT_TOKEN"
-export GOALS_BOT_TOKEN="YOUR_GOALS_BOT_TOKEN"
-export RELATIONSHIP_BOT_TOKEN="YOUR_RELATIONSHIP_BOT_TOKEN"
-export SPIRITUAL_BOT_TOKEN="YOUR_SPIRITUAL_BOT_TOKEN"
-export CREATIVE_BOT_TOKEN="YOUR_CREATIVE_BOT_TOKEN"
 ```
 
 ### 2) Initialize the database

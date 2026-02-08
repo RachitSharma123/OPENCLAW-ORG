@@ -7,15 +7,15 @@ lc init
 
 echo "🤖 Registering your life team..."
 
-lc register wellness-coach "Nutrition & Fitness Tracker" "protein, food intake, exercise, body metrics" "${WELLNESS_BOT_TOKEN:-YOUR_WELLNESS_BOT_TOKEN}"
-lc register money-mentor "Financial Advisor & Tracker" "budget, investments, expenses, financial goals" "${FINANCE_BOT_TOKEN:-YOUR_FINANCE_BOT_TOKEN}"
-lc register style-guru "Fashion & Style Consultant" "wardrobe, outfits, shopping, personal style" "${FASHION_BOT_TOKEN:-YOUR_FASHION_BOT_TOKEN}"
-lc register career-catalyst "Career Growth & Development" "skills, networking, job opportunities, professional goals" "${CAREER_BOT_TOKEN:-YOUR_CAREER_BOT_TOKEN}"
-lc register vision-keeper "Life Goals & Vision Tracker" "long-term goals, milestones, bucket list, life purpose" "${GOALS_BOT_TOKEN:-YOUR_GOALS_BOT_TOKEN}"
-lc register heart-connector "Relationship & Social Wellness" "partner check-ins, friendships, family, social connections" "${RELATIONSHIP_BOT_TOKEN:-YOUR_RELATIONSHIP_BOT_TOKEN}"
-lc register soul-guide "Spiritual Growth & Inner Peace" "meditation, gratitude, mindfulness, spiritual practices" "${SPIRITUAL_BOT_TOKEN:-YOUR_SPIRITUAL_BOT_TOKEN}"
+lc register wellness-coach "Nutrition & Fitness Tracker" "protein, food intake, exercise, body metrics" "YOUR_WELLNESS_BOT_TOKEN"
+lc register money-mentor "Financial Advisor & Tracker" "budget, investments, expenses, financial goals" "YOUR_FINANCE_BOT_TOKEN"
+lc register style-guru "Fashion & Style Consultant" "wardrobe, outfits, shopping, personal style" "YOUR_FASHION_BOT_TOKEN"
+lc register career-catalyst "Career Growth & Development" "skills, networking, job opportunities, professional goals" "YOUR_CAREER_BOT_TOKEN"
+lc register vision-keeper "Life Goals & Vision Tracker" "long-term goals, milestones, bucket list, life purpose" "YOUR_GOALS_BOT_TOKEN"
+lc register heart-connector "Relationship & Social Wellness" "partner check-ins, friendships, family, social connections" "YOUR_RELATIONSHIP_BOT_TOKEN"
+lc register soul-guide "Spiritual Growth & Inner Peace" "meditation, gratitude, mindfulness, spiritual practices" "YOUR_SPIRITUAL_BOT_TOKEN"
 
-lc register creative-spark "Creative Projects & Hobbies" "art, writing, music, creative pursuits" "${CREATIVE_BOT_TOKEN:-YOUR_CREATIVE_BOT_TOKEN}"
+lc register creative-spark "Creative Projects & Hobbies" "art, writing, music, creative pursuits" "YOUR_CREATIVE_BOT_TOKEN"
 
 echo "🌈 Creating starter goals..."
 
